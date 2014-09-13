@@ -27,20 +27,31 @@
 (def world-size 50)
 (def tile-size 5)
 (def states {:dead 0 :alive 1})
+(def statekws {0 :dead 1 :alive})
 (def colors {:dead "#aaa" :alive "#000"})
 (def empty-world (replicate (square world-size) (states :dead)))
 
-(defn create-tile [& _]
+(defn create-tile [state]
   [:div {:style
          {:width tile-size
           :height tile-size
-          :background-color (colors :dead)
+          :background-color (colors (statekws state))
           :display "inline-block"}}])
 
-(dommy/append! (sel1 :body) [:div {:style
+(dommy/append! (sel1 :body) [:div#world {:style
                                   {:width (* tile-size world-size)
                                    :height (* tile-size world-size)}}
                              (map create-tile empty-world)])
 
+(def tiles (sel "#world div"))
+
+(defn update-tile! [tile state]
+  (let [state-kw (statekws state)
+        color (colors state-kw)]
+    (dommy/set-style! tile :background-color color)))
+
 (defn render-world! [world]
-  0)
+  (doseq [[tile state] (map list tiles world)]
+    (update-tile! tile state)))
+
+(render-world! (map #(%1 %2) (cycle [inc identity]) empty-world))
