@@ -10,19 +10,37 @@ object Application extends Controller {
     Ok(views.html.index("Your new application is ready."))
   }
 
-  def socket = WebSocket.using[String] { request =>
+  import play.api.mvc._
+  import play.api.Play.current
 
-    // Concurrent.broadcast returns (Enumerator, Concurrent.Channel)
-    val (out, channel) = Concurrent.broadcast[String]
+  def socket = WebSocket.acceptWithActor[String, String] { request => out =>
+    MyWebSocketActor.props(out)
+  }
 
-    // log the message to stdout and send response back to client
-    val in = Iteratee.foreach[String] {
-      msg => println(msg)
-        // the Enumerator returned by Concurrent.broadcast subscribes to the channel and will
-        // receive the pushed messages
-        channel push("I received your message on the Iteratee: " + msg)
+  import akka.actor._
+
+  object MyWebSocketActor {
+    def props(out: ActorRef) = Props(new MyWebSocketActor(out))
+  }
+
+  class MyWebSocketActor(out: ActorRef) extends Actor {
+    def receive = {
+      case "sot" => {
+        println("Requested the state of the world")
+
+        //TODO
+        out ! getStateOfTheWorld
+      }
+      case _ => {
+        println("Unhandled message. Killing ws.")
+        out ! "Unhandled message. Killing ws."
+        self ! PoisonPill
+      }
     }
-    (in,out)
+
+    def getStateOfTheWorld : String = {
+      "0" * 2500
+    }
   }
 
 }
